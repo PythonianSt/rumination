@@ -1,21 +1,30 @@
-import os
 import streamlit as st
-from dotenv import load_dotenv
 from openai import OpenAI
 
-load_dotenv()
+st.set_page_config(
+    page_title="Thai Rumination Helper",
+    page_icon="🧠",
+    layout="centered"
+)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-MODEL = os.getenv("OPENAI_MODEL", "gpt-5.5")
+def get_secret(name, default=None):
+    try:
+        return st.secrets[name]
+    except Exception:
+        return default
 
-st.set_page_config(page_title="Thai Rumination Helper", page_icon="🧠", layout="centered")
+OPENAI_API_KEY = get_secret("OPENAI_API_KEY")
+MODEL = get_secret("OPENAI_MODEL", "gpt-5.5")
+
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 st.title("🧠 ตัวช่วยแปลงความคิดวนซ้ำ")
 st.caption("Rumination → Healthy Reflection โดยใช้ GPT")
 
 st.warning(
     "เครื่องมือนี้ไม่ใช่การวินิจฉัยหรือการรักษาโรค "
-    "หากมีความคิดทำร้ายตนเองหรือไม่ปลอดภัย โปรดติดต่อคนใกล้ชิด แพทย์ หรือสายด่วนฉุกเฉินทันที"
+    "หากมีความคิดทำร้ายตนเองหรือไม่ปลอดภัย "
+    "โปรดติดต่อคนใกล้ชิด แพทย์ หรือสายด่วนฉุกเฉินทันที"
 )
 
 thought = st.text_area(
@@ -43,7 +52,12 @@ def analyze_rumination(thought, context, style):
     prompt = f"""
 คุณคือผู้ช่วยภาษาไทยด้านสุขภาวะจิตใจ
 เป้าหมาย: ช่วยแยก "ความคิดวนซ้ำ/rumination" ออกจาก "healthy reflection"
-ห้ามวินิจฉัยโรค ห้ามกล่าวเกินจริง ห้ามแทนที่แพทย์/นักจิตวิทยา
+
+ข้อจำกัดสำคัญ:
+- ห้ามวินิจฉัยโรค
+- ห้ามกล่าวเกินจริง
+- ห้ามแทนที่แพทย์ นักจิตวิทยา หรือผู้เชี่ยวชาญสุขภาพจิต
+- หากพบความเสี่ยงต่อการทำร้ายตนเองหรือผู้อื่น ให้แนะนำขอความช่วยเหลือทันที
 
 ข้อมูลจากผู้ใช้:
 ความคิด: {thought}
@@ -83,12 +97,13 @@ def analyze_rumination(thought, context, style):
 if st.button("🔄 แปลงเป็น Healthy Reflection"):
     if not thought.strip():
         st.error("กรุณาเขียนความคิดที่วนซ้ำก่อน")
-    elif not os.getenv("OPENAI_API_KEY"):
-        st.error("ไม่พบ OPENAI_API_KEY ในไฟล์ .env")
+    elif client is None:
+        st.error("ไม่พบ OPENAI_API_KEY ใน Streamlit Secrets")
     else:
         with st.spinner("กำลังช่วยแปลงความคิด..."):
             try:
                 result = analyze_rumination(thought, context, style)
+
                 st.subheader("ผลลัพธ์")
                 st.markdown(result)
 
